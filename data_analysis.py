@@ -85,11 +85,72 @@ def plot_combined_pitch_trends(interaction_df, metric, plots_dir):
 
         print(f"Combined trend plot saved for pitch {pitch}: {plot_path}")
 
+def calculate_displacements(df):
+    # Sort and calculate differences
+    df = df.sort_values(by=['time'])
+    df['dx'] = df['centroid_x'].diff()
+    df['dy'] = df['centroid_y'].diff()
+
+    # Calculate polar coordinates
+    df['angle'] = np.arctan2(df['dy'], df['dx'])
+    df['radius'] = np.sqrt(df['dx']**2 + df['dy']**2)
+
+    return df
+
+def plot_average_time_series_polar_displacement(df, plots_dir):
+    # Normalize control entries and avoid SettingWithCopyWarning by using .copy()
+    df = df.copy()
+    df['shape'] = df.apply(lambda x: 'control' if 'control' in x['shape'] else x['shape'], axis=1)
+
+    # Get unique pitches
+    pitches = df['pitch'].unique()
+
+    # Create a plot for each pitch
+    for pitch in pitches:
+        pitch_data = df[df['pitch'] == pitch].copy()
+        pitch_data['normalized_time'] = (pitch_data['time'] / pitch_data['time'].max()) * 2 * np.pi  # Normalize time
+
+        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'}, figsize=(20, 20))
+        ax.set_theta_zero_location('N')  # North is zero degrees
+        ax.set_theta_direction(-1)  # Clockwise
+
+        # Group data by shape
+        groups = pitch_data.groupby('shape')
+        colors = plt.cm.viridis(np.linspace(0, 1, len(groups)))  # Generate colors for each group
+
+        for (shape, group), color in zip(groups, colors):
+            averaged = group.groupby('time').agg({
+                'normalized_time': 'first',  # Use the first normalized time
+                'angle': np.mean,           # Average angle
+                'radius': np.mean            # Average radius
+            })
+
+            # Plot for each shape
+            ax.plot(averaged['normalized_time'], averaged['radius'], label=f'{shape}', color=color, linewidth=2)
+
+        ax.set_title(f'Average Displacement Over Time by Shape (Pitch {pitch})', fontsize=20)
+        ax.legend(fontsize=14)
+
+        plot_path = os.path.join(plots_dir, f'average_time_series_displacement_polar_pitch_{pitch}.pdf')
+        # Save the plot as a PDF
+        with PdfPages(plot_path) as pdf:
+            pdf.savefig(fig)
+        plt.close()
+
+        print(f"Average time series displacement plot saved for pitch {pitch}: {plot_path}")
+
 
 def main(csv_path, output_dir, image_path):
     """Main function to load data and generate plots."""
     interaction_df = load_interaction_data(csv_path, image_path)
     plots_dir = ensure_plot_directories(output_dir)
+    
+    # Plot polar displacement
+    # Calculate displacements for each cluster and update the DataFrame
+    interaction_df = calculate_displacements(interaction_df)
+    plot_average_time_series_polar_displacement(interaction_df, plots_dir)
+    
+    # Plot velocity and length for each shape
     plot_combined_pitch_trends(interaction_df, 'velocity', plots_dir)
     plot_combined_pitch_trends(interaction_df, 'length', plots_dir)
 
@@ -100,6 +161,6 @@ def main(csv_path, output_dir, image_path):
 
 # Usage example
 csv_path = 'neurite_tracking_code_files/live_imaging/all_interaction_data.csv'
-output_dir = 'neurite_tracking_code_files/live_imaging'
+output_dir = 'neurite_tracking_code_files/live_imaging_test'
 image_path = 'neurite_tracking_code_files/live_imaging/thin_p4_p10/pngs/frame_0001.png'
 main(csv_path, output_dir, image_path)

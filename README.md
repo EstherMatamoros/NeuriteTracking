@@ -92,6 +92,8 @@
     - **`load_interaction_data(csv_path, image_path)`**: Loads interaction data from the generated CSV file (from postprocessing code) and classifies it based on the image pitch.
     - **`ensure_plot_directories(base_dir)`**: Creates directories to save the output plots if they don’t exist.
     - **`normalize_data(df, column)`**: Normalizes the values in a column to a 0-100 scale.
+    - **`calculate_displacements(df)`**: Calculates the displacement (change in position) between consecutive time points for neurites' centroids. Computes both the displacement vector and its polar coordinates (angle and magnitude).
+    - **`plot_average_time_series_polar_displacement(df, plots_dir)`**: Plots average polar displacement (angle and radius) over time for neurites, grouped by shape and pitch. The results are saved as PDF files.
     - **`plot_combined_pitch_trends(interaction_df, metric, plots_dir)`**: Generates trend plots for different pitches and saves them as PDFs.
     - **`main(csv_path, output_dir, image_path)`**: The main function that orchestrates data loading, classification, plotting, and saving the updated data.
     
